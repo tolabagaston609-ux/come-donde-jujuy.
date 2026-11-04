@@ -1,78 +1,290 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>COMÉ DÓNDE — Jujuy</title>
+  <title>COMÉ DÓNDE - Jujuy</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    * { box-sizing: border-box; }
     body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #fff8ed;
-      color: #26352b;
+      margin: 0; font-family: Arial, sans-serif;
+      background: #fff8ed; color: #26352c;
     }
     header {
-      background: #f47b20;
-      color: white;
-      padding: 28px 18px;
-      text-align: center;
+      background: #ed762c; color: white;
+      text-align: center; padding: 24px 12px;
     }
-    header h1 { margin: 0; font-size: 32px; }
-    main { padding: 20px; max-width: 650px; margin: auto; }
-    .buscador {
-      width: 100%;
-      padding: 14px;
-      box-sizing: border-box;
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      font-size: 16px;
+    header h1 { margin: 0; font-size: 29px; }
+    main { max-width: 650px; margin: auto; padding: 14px; }
+    section {
+      background: white; padding: 16px; margin: 14px 0;
+      border-radius: 12px; box-shadow: 0 2px 8px #0001;
     }
-    .tarjeta {
-      background: white;
-      padding: 18px;
-      margin-top: 16px;
-      border-radius: 14px;
-      box-shadow: 0 2px 8px #0001;
+    h2 { color: #27834d; margin-top: 0; }
+    input, textarea, select {
+      display: block; width: 100%; padding: 12px;
+      margin: 8px 0; border: 1px solid #ccc;
+      border-radius: 8px; font-size: 16px;
     }
-    .estrella { color: #e99b16; }
     button {
-      background: #27834d;
-      color: white;
-      border: 0;
-      border-radius: 10px;
-      padding: 12px 18px;
-      font-size: 16px;
+      width: 100%; padding: 12px; margin: 6px 0;
+      border: 0; border-radius: 8px;
+      background: #27834d; color: white;
+      font-size: 16px; font-weight: bold;
     }
-    footer { text-align: center; padding: 25px; color: #777; }
+    .orange { background: #ed762c; }
+    .dark { background: #444; }
+    .place {
+      border: 1px solid #eee; border-radius: 10px;
+      padding: 12px; margin: 12px 0;
+    }
+    .stars { color: #e99b12; font-size: 20px; }
+    .muted { color: #777; font-size: 13px; }
+    #message { color: #a33; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>🍽️ COMÉ DÓNDE</h1>
-    <p>Descubrí dónde comer en Jujuy</p>
-  </header>
-  <main>
-    <h2>Encontrá tu próximo lugar favorito</h2>
-    <input class="buscador" placeholder="Buscar lugares o localidades...">
-    <h2>⭐ Lugares destacados</h2>
-    <div class="tarjeta">
-      <h3>Restaurante de ejemplo</h3>
-      <p>📍 San Salvador de Jujuy</p>
-      <p class="estrella">★★★★★</p>
-      <p>Un lugar de muestra para descubrir comidas y experiencias.</p>
-    </div>
-    <div class="tarjeta">
-      <h3>Comida regional de ejemplo</h3>
-      <p>📍 Tilcara</p>
-      <p class="estrella">★★★★☆</p>
-      <p>Datos de demostración, todavía no son reseñas reales.</p>
-    </div>
-    <div class="tarjeta">
-      <h3>¡Tu experiencia cuenta!</h3>
-      <p>Próximamente vas a poder publicar lugares, fotos y reseñas.</p>
-      <button>Próximamente</button>
-    </div>
-  </main>
-  <footer>COMÉ DÓNDE · Jujuy</footer>
+<header>
+  <h1>🍽️ COMÉ DÓNDE</h1>
+  <p>Descubrí dónde comer en Jujuy</p>
+</header>
+
+<main>
+  <section>
+    <h2>👤 Tu cuenta</h2>
+    <p id="account">No iniciaste sesión.</p>
+    <input id="email" type="email" placeholder="Correo electrónico">
+    <input id="password" type="password" placeholder="Contraseña">
+    <button onclick="signUp()">Crear cuenta</button>
+    <button class="orange" onclick="signIn()">Iniciar sesión</button>
+    <button class="dark" onclick="googleLogin()">Continuar con Google</button>
+    <button onclick="signOut()">Cerrar sesión</button>
+    <p class="muted">Si te registrás por correo, revisá tu bandeja de entrada para confirmar la cuenta.</p>
+  </section>
+
+  <section>
+    <h2>📍 Lugares para descubrir</h2>
+    <input id="search" placeholder="Buscar por nombre o localidad" oninput="showPlaces()">
+    <div id="places">Cargando lugares...</div>
+  </section>
+
+  <section>
+    <h2>➕ Publicar un lugar</h2>
+    <input id="placeName" placeholder="Nombre del lugar">
+    <input id="category" placeholder="Categoría">
+    <input id="town" placeholder="Localidad">
+    <input id="address" placeholder="Dirección">
+    <textarea id="description" placeholder="Contanos sobre el lugar"></textarea>
+    <button onclick="publishPlace()">Publicar lugar</button>
+  </section>
+
+  <section>
+    <h2>⭐ Compartir una experiencia</h2>
+    <select id="reviewPlace">
+      <option value="">Elegir lugar</option>
+    </select>
+    <select id="stars">
+      <option value="5">★★★★★ - 5 estrellas</option>
+      <option value="4">★★★★ - 4 estrellas</option>
+      <option value="3">★★★ - 3 estrellas</option>
+      <option value="2">★★ - 2 estrellas</option>
+      <option value="1">★ - 1 estrella</option>
+    </select>
+    <textarea id="comment" placeholder="Contá tu experiencia"></textarea>
+    <button onclick="publishReview()">Publicar reseña</button>
+  </section>
+
+  <p id="message"></p>
+  <p class="muted" style="text-align:center">COMÉ DÓNDE · Jujuy</p>
+</main>
+
+<script>
+const SUPABASE_URL = "https://ssltwzcnljnrizalerir.supabase.co";
+const SUPABASE_KEY = "sb_publishable_5mNu_A5gCrh8wKt_1mJSCA_55JbFAqh";
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let placesData = [];
+let reviewsData = [];
+
+function message(text) {
+  document.getElementById("message").textContent = text;
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;"
+  })[char]);
+}
+
+function renderAccount() {
+  document.getElementById("account").textContent =
+    currentUser ? "Sesión iniciada: " + currentUser.email : "No iniciaste sesión.";
+}
+
+async function signUp() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  if (!email || !password) return message("Completá correo y contraseña.");
+  const { error } = await db.auth.signUp({ email, password });
+  if (error) return message(error.message);
+  message("Registro iniciado. Revisá tu correo para confirmar la cuenta.");
+}
+
+async function signIn() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  if (!email || !password) return message("Completá correo y contraseña.");
+  const { error } = await db.auth.signInWithPassword({ email, password });
+  if (error) return message(error.message);
+  message("¡Bienvenido a COMÉ DÓNDE!");
+}
+
+async function googleLogin() {
+  const { error } = await db.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: window.location.href }
+  });
+  if (error) message(error.message);
+}
+
+async function signOut() {
+  const { error } = await db.auth.signOut();
+  if (error) return message(error.message);
+  message("Cerraste sesión.");
+}
+
+async function loadData() {
+  const [places, reviews] = await Promise.all([
+    db.from("Lugares").select("*").order("Nombre"),
+    db.from("Reseñas").select("Lugar_id,Estrellas")
+  ]);
+
+  if (places.error) {
+    message("Error al cargar lugares: " + places.error.message);
+    return;
+  }
+  if (reviews.error) {
+    message("Error al cargar reseñas: " + reviews.error.message);
+    return;
+  }
+
+  placesData = places.data || [];
+  reviewsData = reviews.data || [];
+  showPlaces();
+}
+
+function showPlaces() {
+  const term = document.getElementById("search").value.toLowerCase().trim();
+  const filtered = placesData.filter(place =>
+    [place.Nombre, place.Localidad, place.Categoria]
+      .some(value => String(value || "").toLowerCase().includes(term))
+  );
+
+  const container = document.getElementById("places");
+  const select = document.getElementById("reviewPlace");
+
+  select.innerHTML = '<option value="">Elegir lugar</option>';
+
+  filtered.forEach(place => {
+    select.add(new Option(place.Nombre, place.Id));
+  });
+
+  if (!filtered.length) {
+    container.textContent = "Todavía no hay lugares publicados.";
+    return;
+  }
+
+  container.innerHTML = filtered.map(place => {
+    const reviews = reviewsData.filter(r => r.Lugar_id === place.Id);
+    const average = reviews.length
+      ? reviews.reduce((sum, r) => sum + Number(r.Estrellas), 0) / reviews.length
+      : 0;
+    const stars = average
+      ? "★".repeat(Math.round(average)) + "☆".repeat(5 - Math.round(average))
+      : "Sin calificaciones";
+
+    return `
+      <article class="place">
+        <h3>${escapeHTML(place.Nombre)}</h3>
+        <p>${escapeHTML(place.Categoria)}</p>
+        <p>📍 ${escapeHTML(place.Localidad || "Localidad no indicada")}</p>
+        <p>${escapeHTML(place["Dirección"] || "")}</p>
+        <p>${escapeHTML(place.Descripción || "")}</p>
+        <p class="stars">${stars}</p>
+        <p class="muted">${reviews.length} reseñas</p>
+      </article>
+    `;
+  }).join("");
+}
+
+async function publishPlace() {
+  if (!currentUser) return message("Primero tenés que iniciar sesión.");
+
+  const name = document.getElementById("placeName").value.trim();
+  const category = document.getElementById("category").value.trim();
+  const town = document.getElementById("town").value.trim();
+  const address = document.getElementById("address").value.trim();
+  const description = document.getElementById("description").value.trim();
+
+  if (!name || !category) return message("Completá nombre y categoría.");
+
+  const { error } = await db.from("Lugares").insert({
+    Nombre: name,
+    Categoria: category,
+    Localidad: town || null,
+    "Dirección": address || null,
+    Descripción: description || null,
+    Usuario_id: currentUser.id
+  });
+
+  if (error) return message("No se pudo publicar: " + error.message);
+
+  message("¡Lugar publicado!");
+  ["placeName", "category", "town", "address", "description"]
+    .forEach(id => document.getElementById(id).value = "");
+  await loadData();
+}
+
+async function publishReview() {
+  if (!currentUser) return message("Primero tenés que iniciar sesión.");
+
+  const placeId = document.getElementById("reviewPlace").value;
+  const stars = Number(document.getElementById("stars").value);
+  const comment = document.getElementById("comment").value.trim();
+
+  if (!placeId) return message("Elegí un lugar.");
+  if (!comment) return message("Escribí tu experiencia.");
+
+  const { error } = await db.from("Reseñas").insert({
+    Lugar_id: placeId,
+    Usuario_id: currentUser.id,
+    Estrellas: stars,
+    Comentario: comment
+  });
+
+  if (error) return message("No se pudo publicar la reseña: " + error.message);
+
+  document.getElementById("comment").value = "";
+  message("¡Gracias por compartir tu experiencia!");
+  await loadData();
+}
+
+db.auth.onAuthStateChange((_event, session) => {
+  currentUser = session?.user || null;
+  renderAccount();
+});
+
+db.auth.getSession().then(({ data }) => {
+  currentUser = data.session?.user || null;
+  renderAccount();
+});
+
+loadData();
+</script>
 </body>
 </html>
