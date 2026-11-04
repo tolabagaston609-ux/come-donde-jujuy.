@@ -144,8 +144,15 @@
       <input id="town" placeholder="Localidad">
       <input id="address" placeholder="Dirección">
       <textarea id="description"
-        placeholder="Contanos sobre el lugar"></textarea>
+  placeholder="Contanos sobre el lugar"></textarea>
 
+<button type="button" class="orange" onclick="getPlaceLocation()">
+  📍 Marcar ubicación GPS
+</button>
+
+<p id="locationStatus" class="muted">
+  Todavía no se marcó la ubicación.
+</p>
       <p><strong>📷 Foto del lugar</strong></p>
       <input id="placePhoto" type="file" accept="image/*">
       <p class="muted">Elegí una foto de tu celular. Máximo 5 MB.</p>
@@ -203,11 +210,50 @@ const db = window.supabase.createClient(
 let currentUser = null;
 let placesData = [];
 let reviewsData = [];
+let placeLatitude = null;
+let placeLongitude = null;  
 
 function message(text) {
   document.getElementById("message").textContent = text;
-}
+}  
+function getPlaceLocation() {
+  if (!navigator.geolocation) {
+    return message("Este navegador no permite usar GPS.");
+  }
 
+  message("Solicitando ubicación GPS...");
+
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      placeLatitude = position.coords.latitude;
+      placeLongitude = position.coords.longitude;
+
+      document.getElementById("locationStatus").textContent =
+        "Ubicación marcada correctamente 📍";
+
+      message("¡Ubicación GPS guardada en el formulario!");
+    },
+    error => {
+      let text = "No pudimos obtener tu ubicación.";
+
+      if (error.code === 1)
+        text = "Permití el acceso a la ubicación para continuar.";
+
+      if (error.code === 2)
+        text = "No se pudo detectar la ubicación. Probá nuevamente.";
+
+      if (error.code === 3)
+        text = "La ubicación tardó demasiado. Probá nuevamente.";
+
+      message(text);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0
+    }
+  );
+}
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
     "&": "&amp;",
@@ -471,20 +517,26 @@ async function publishPlace() {
     const photoUrl = await uploadPhoto(photo);
 
     const { error } = await db.from("Lugares").insert({
-      Nombre: name,
-      Categoria: category,
-      Localidad: town || null,
-      "Dirección": address || null,
-      Descripción: description || null,
-      Foto_url: photoUrl,
-      Usuario_id: currentUser.id
-    });
+  Nombre: name,
+  Categoria: category,
+  Localidad: town || null,
+  "Dirección": address || null,
+  Descripción: description || null,
+  Foto_url: photoUrl,
+  Latitud: placeLatitude,
+  Longitud: placeLongitude,
+  Usuario_id: currentUser.id
+});
 
     if (error)
       return message("No se pudo publicar: " + error.message);
 
     message("¡Lugar publicado correctamente!");
+    placeLatitude = null;
+placeLongitude = null;
 
+document.getElementById("locationStatus").textContent =
+  "Todavía no se marcó la ubicación.";
     [
       "placeName", "category", "town",
       "address", "description", "placePhoto"
